@@ -18,6 +18,12 @@ export type ModuleMeta = {
   actions: string[]
   actionTargets: Record<string, string>
   metrics: string[]
+  // 业务表里与工作流状态同义的展示字段：每次流转都同步成同一个状态，台账与底稿只认这一份。
+  statusField?: string
+  // 动作允许的源状态白名单：不填则沿用「目标态不同就允许」的旧口径；填了就不许越级。
+  actionFrom?: Record<string, string[]>
+  // 终态集合：落在这些状态上的记录不再算待处理；不填时默认只有最后一个状态是终态。
+  terminalStatuses?: string[]
 }
 
 export type PageResult = {

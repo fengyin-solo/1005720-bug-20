@@ -55,6 +55,8 @@
             >
               {{ action }}
             </button>
+            <button class="link" type="button" @click="launchCheck(row)">发起校验</button>
+            <button class="link" type="button" @click="openDetail(row)">详情</button>
           </td>
         </tr>
         <tr v-if="!rows.length">
@@ -62,6 +64,24 @@
         </tr>
       </tbody>
     </table>
+
+    <!-- 详情面板：型号、状态、校验周期、上次校验日都读台账同一行，不另存一份。 -->
+    <aside v-if="detail" class="detail-panel" data-role="protection-detail">
+      <header class="detail-head">
+        <h3>保护装置详情</h3>
+        <button class="btn ghost" type="button" @click="detail = null">关闭</button>
+      </header>
+      <dl class="detail-grid">
+        <div v-for="field in columns" :key="field" class="detail-item">
+          <dt>{{ field }}</dt>
+          <dd :data-field="field">{{ detail[field] ?? '—' }}</dd>
+        </div>
+        <div class="detail-item">
+          <dt>工作流状态</dt>
+          <dd data-field="工作流状态">{{ detail.status }}</dd>
+        </div>
+      </dl>
+    </aside>
 
     <footer class="page-foot">
       <span>共 {{ total }} 条保护装置台账记录</span>
@@ -78,6 +98,7 @@ import {
   listEntries,
   moduleMeta,
   runAction as applyAction,
+  submitProtectionCheck,
 } from '@/api/local-service'
 import type { EntryRow } from '@/data/types'
 
@@ -91,6 +112,7 @@ const rows = ref<EntryRow[]>([])
 const total = ref(0)
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
+const detail = ref<EntryRow | null>(null)
 const filterFields = columns.slice(0, 3)
 const statusSummary = computed(() =>
   statuses.map((status: string) => ({
@@ -122,12 +144,27 @@ function runAction(action: string, row: EntryRow) {
   reload()
 }
 
+// 发起校验走 service：需更换的装置会在 service 里挡回，同一台装置只归并到一份校验底稿。
+function launchCheck(row: EntryRow) {
+  errorMessage.value = ''
+  const result = submitProtectionCheck(Number(row.id))
+  errorMessage.value = result.ok ? '' : result.message
+}
+
+function openDetail(row: EntryRow) {
+  detail.value = row
+}
+
 function reload() {
   errorMessage.value = ''
   try {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    // 详情面板始终引用台账当前行，刷新后读到的还是同一份底稿。
+    if (detail.value) {
+      detail.value = rows.value.find((row) => Number(row.id) === Number(detail.value?.id)) ?? null
+    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '保护装置台账列表读取失败'
   }
