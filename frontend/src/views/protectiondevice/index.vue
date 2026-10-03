@@ -46,6 +46,7 @@
           <td v-for="column in columns" :key="column">{{ row[column] ?? '—' }}</td>
           <td>{{ row.status }}</td>
           <td class="row-actions">
+            <button class="link" type="button" @click="openDetail(row)">详情</button>
             <button
               v-for="action in actions"
               :key="action"
@@ -63,8 +64,25 @@
       </tbody>
     </table>
 
+    <aside v-if="selectedRow" class="detail-panel" data-panel="protectiondevice-detail">
+      <header class="detail-head">
+        <h3>保护装置详情</h3>
+        <button class="btn ghost" type="button" @click="closeDetail">关闭</button>
+      </header>
+      <dl class="detail-grid">
+        <template v-for="column in columns" :key="column">
+          <dt>{{ column }}</dt>
+          <dd>{{ selectedRow[column] || '—' }}</dd>
+        </template>
+        <dt>当前状态</dt>
+        <dd>{{ selectedRow.status }}</dd>
+      </dl>
+      <p class="detail-note">详情与台账共用同一份底稿，装置型号、校验周期、上次校验日两边一致。</p>
+    </aside>
+
     <footer class="page-foot">
       <span>共 {{ total }} 条保护装置台账记录</span>
+      <span v-if="noticeMessage" class="ok-text">{{ noticeMessage }}</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
     </footer>
   </section>
@@ -90,8 +108,14 @@ const stats = [{"label": "运行正常装置", "value": 0}, {"label": "待校验
 const rows = ref<EntryRow[]>([])
 const total = ref(0)
 const errorMessage = ref('')
+const noticeMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
+const selectedId = ref<number | null>(null)
+// 详情面板和台账表格读的是同一份 rows，装置型号等字段两边自然是同一份。
+const selectedRow = computed(
+  () => rows.value.find((row) => Number(row.id) === selectedId.value) ?? null,
+)
 const statusSummary = computed(() =>
   statuses.map((status: string) => ({
     status,
@@ -112,13 +136,23 @@ function openCreate() {
   errorMessage.value = '保护装置登记入口尚未接入审批流'
 }
 
+function openDetail(row: EntryRow) {
+  selectedId.value = Number(row.id)
+}
+
+function closeDetail() {
+  selectedId.value = null
+}
+
 function runAction(action: string, row: EntryRow) {
   errorMessage.value = ''
+  noticeMessage.value = ''
   const result = applyAction(meta.key, Number(row.id), action)
   if (!result.ok) {
     errorMessage.value = result.message
     return
   }
+  noticeMessage.value = result.message
   reload()
 }
 

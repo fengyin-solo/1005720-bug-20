@@ -17,6 +17,8 @@ export type ModuleMeta = {
   statuses: string[]
   actions: string[]
   actionTargets: Record<string, string>
+  /** 每个动作允许从哪些状态发起；缺省表示不限制。越级或终态再操作会被挡回。 */
+  actionSources?: Record<string, string[]>
   metrics: string[]
 }
 
